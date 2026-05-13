@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboardIcon,
@@ -12,14 +12,27 @@ import {
   MapIcon } from
 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import * as adminApi from '../../api/admin';
+
 interface SidebarProps {
   role: 'Campus Admin' | 'System Admin';
   isCollapsed: boolean;
 }
+
 export function Sidebar({ role, isCollapsed }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (role === 'System Admin') {
+      adminApi.getFeedback('pending', 'system')
+        .then(data => setPendingCount(data.length))
+        .catch(console.error);
+    }
+  }, [location.pathname, role]);
+
   const campusNav = [
   {
     name: 'Dashboard',
@@ -64,6 +77,12 @@ export function Sidebar({ role, isCollapsed }: SidebarProps) {
     icon: ActivityIcon
   },
   {
+    name: 'System Feedback',
+    path: '/system/feedback',
+    icon: MessageSquareIcon,
+    badge: pendingCount > 0 ? pendingCount : undefined
+  },
+  {
     name: 'System Reports',
     path: '/system/reports',
     icon: BarChart3Icon
@@ -99,13 +118,13 @@ export function Sidebar({ role, isCollapsed }: SidebarProps) {
           </div>
         }
 
-        {navItems.map((item) => {
+        {navItems.map((item: any) => {
           const isActive = location.pathname === item.path;
           return (
             <NavLink
               key={item.name}
               to={item.path}
-              className={`flex items-center px-3 py-2.5 rounded-lg transition-colors group ${isActive ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-700 dark:text-slate-300 hover:bg-primary-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+              className={`flex items-center px-3 py-2.5 rounded-lg transition-colors group relative ${isActive ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-700 dark:text-slate-300 hover:bg-primary-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
               title={isCollapsed ? item.name : undefined}>
               
               <item.icon
@@ -113,8 +132,14 @@ export function Sidebar({ role, isCollapsed }: SidebarProps) {
                 className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400 group-hover:text-primary-700 dark:group-hover:text-white'}`} />
               
               {!isCollapsed &&
-              <span className="ml-3 whitespace-nowrap">{item.name}</span>
+                <span className="ml-3 whitespace-nowrap flex-1">{item.name}</span>
               }
+
+              {item.badge && (
+                <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white text-primary-600' : 'bg-primary-600 text-white'} ${isCollapsed ? 'absolute top-1 right-1' : 'ml-2'}`}>
+                  {item.badge}
+                </span>
+              )}
             </NavLink>);
 
         })}
@@ -124,7 +149,7 @@ export function Sidebar({ role, isCollapsed }: SidebarProps) {
           {!isCollapsed && user &&
           <div className="px-3 py-2 mb-2">
               <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                {user.name}
+                {user.name || user.email?.split('@')[0] || 'User'}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                 {user.email}
@@ -161,5 +186,4 @@ export function Sidebar({ role, isCollapsed }: SidebarProps) {
         </div>
       </div>
     </aside>);
-
 }

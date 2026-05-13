@@ -28,23 +28,14 @@ export function Login() {
     setIsLoading(true);
     // Simulate network delay for realism
     await new Promise((resolve) => setTimeout(resolve, 800));
-    const result = login(email, password);
+    const result = await login(email, password);
     setIsLoading(false);
     if (result.success) {
-      // The App component will handle redirect based on role
-      // We need to trigger a re-render, which happens via context update
-      // Navigate based on the user's role
-      const { user } = JSON.parse(localStorage.getItem('auth_user') || '{}');
-      // Re-read from context won't work immediately, so read from localStorage
       const savedUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
-      if (savedUser.role === 'System Admin') {
-        navigate('/system', {
-          replace: true
-        });
+      if (savedUser.role === 'system_admin') {
+        navigate('/system', { replace: true });
       } else {
-        navigate('/campus', {
-          replace: true
-        });
+        navigate('/campus', { replace: true });
       }
     } else {
       setError(result.error || 'Login failed.');
@@ -110,6 +101,8 @@ export function Login() {
               y: 0
             }}
             className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-start gap-2">
+            <AlertCircleIcon size={18} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+            <span className="text-sm text-red-700 dark:text-red-300 font-medium">{error}</span>
           </motion.div>
           }
 
@@ -125,8 +118,7 @@ export function Login() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 
                 <input
-                  type="email"
-                  required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@dmu.ac.uk"
@@ -148,6 +140,7 @@ export function Login() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"

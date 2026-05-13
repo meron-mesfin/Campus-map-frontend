@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   MenuIcon,
   BellIcon,
@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { displayRole } from '../../utils/roles';
 import { useLocation } from 'react-router-dom';
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -57,14 +58,14 @@ export function Header({ toggleSidebar, role }: HeaderProps) {
   pathParts[pathParts.length - 1].charAt(0).toUpperCase() +
   pathParts[pathParts.length - 1].slice(1) :
   'Dashboard';
-  // Get initials for avatar
-  const initials = user ?
-  user.name.
-  split(' ').
-  map((n) => n[0]).
-  join('').
-  toUpperCase() :
-  '';
+  // Get initials for avatar — safe against undefined / empty name
+  const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+  const initials = displayName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
   // Format last login
   const formatDate = (iso?: string) => {
     if (!iso) return '—';
@@ -81,7 +82,8 @@ export function Header({ toggleSidebar, role }: HeaderProps) {
       return iso;
     }
   };
-  const isSystemAdmin = user?.role === 'System Admin';
+  const isSystemAdmin = user?.role === 'system_admin';
+  const roleLabel = user ? displayRole(user.role) : '';
   const roleColor = isSystemAdmin ?
   'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800' :
   'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 border-primary-200 dark:border-primary-800';
@@ -273,11 +275,15 @@ export function Header({ toggleSidebar, role }: HeaderProps) {
             className="flex items-center gap-2 p-1 pr-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             title="Account info">
             
-            <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-bold">
-              {initials || <UserIcon size={16} />}
+            <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-bold overflow-hidden border border-slate-200 dark:border-slate-700">
+              {user?.profile_picture ? (
+                <img src={user.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                initials || <UserIcon size={16} />
+              )}
             </div>
             <span className="hidden lg:block text-sm font-medium text-slate-700 dark:text-slate-200">
-              {user?.name}
+              {displayName}
             </span>
           </button>
 
@@ -307,12 +313,16 @@ export function Header({ toggleSidebar, role }: HeaderProps) {
                 {/* Profile header */}
                 <div className="px-4 py-4 bg-gradient-to-br from-primary-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-primary-600 flex items-center justify-center text-white text-base font-bold shrink-0">
-                      {initials}
+                    <div className="h-12 w-12 rounded-full bg-primary-600 flex items-center justify-center text-white text-base font-bold shrink-0 overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm">
+                      {user?.profile_picture ? (
+                        <img src={user.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        initials
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                        {user.name}
+                        {displayName}
                       </p>
                       <span
                       className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${roleColor}`}>
@@ -322,7 +332,7 @@ export function Header({ toggleSidebar, role }: HeaderProps) {
 
                       <BadgeCheckIcon size={10} />
                       }
-                        {user.role}
+                        {roleLabel}
                       </span>
                     </div>
                   </div>

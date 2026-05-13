@@ -1,69 +1,76 @@
 import React, { useCallback, useState, createContext, useContext } from 'react';
-import { initialAdmins, Admin } from '../data/mockData';
-interface AuthContextType {
-  user: Admin | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => {
-    success: boolean;
-    error?: string;
-  };
-  logout: () => void;
+import * as authApi from '../api/auth';
+import { clearToken, getToken } from '../api/client';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
+  full_name?: string;
+  role: 'system_admin' | 'campus_admin' | 'user';
+  status?: 'Active' | 'Inactive';
+  lastLogin?: string;
+  profile_picture?: string;
 }
+
+interface AuthContextType {
+  user: AuthUser | null;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+  updateUser: (updatedUser: AuthUser) => void;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-export function AuthProvider({
-  children
 
-
-}: {children: React.ReactNode;}) {
-  const [user, setUser] = useState<Admin | null>(() => {
-    // Check for persisted session
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (!getToken()) return null;
     const saved = localStorage.getItem('auth_user');
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
+      try { return JSON.parse(saved) as AuthUser; }
+      catch { return null; }
     }
     return null;
   });
-  const login = useCallback((email: string, password: string) => {
-    const found = initialAdmins.find((a) => a.email.toLowerCase() === email.toLowerCase() && a.password === password);
-    if (!found) {
-      return {
-        success: false,
-        error: 'Invalid email or password.'
-      };
+
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const authUser = await authApi.login(email, password);
+      if (authUser.role !== 'system_admin' && authUser.role !== 'campus_admin') {
+        clearToken();
+        return { success: false, error: 'Access denied. This portal is for administrators only.' };
+      }
+      setUser(authUser);
+      localStorage.setItem('auth_user', JSON.stringify(authUser));
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Login failed.' };
     }
-    if (found.status === 'Inactive') {
-      return {
-        success: false,
-        error: 'This account has been deactivated. Contact a System Administrator.'
-      };
-    }
-    setUser(found);
-    localStorage.setItem('auth_user', JSON.stringify(found));
-    return {
-      success: true
-    };
   }, []);
+
   const logout = useCallback(() => {
+    authApi.logout();
     setUser(null);
-    localStorage.removeItem('auth_user');
   }, []);
-  return <AuthContext.Provider value={{
-    user,
-    isAuthenticated: !!user,
-    login,
-    logout
-  }}>
+
+  const updateUser = useCallback((updatedUser: AuthUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, updateUser }}>
       {children}
-    </AuthContext.Provider>;
+    </AuthContext.Provider>
+  );
 }
+
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
+
+// Re-exported from utils/roles so existing imports from AuthContext still work
+export { displayRole } from '../utils/roles';

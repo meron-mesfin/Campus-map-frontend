@@ -1,23 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusIcon, Edit2Icon, Trash2Icon, UsersIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  initialStaff,
-  initialLocations,
-  StaffMember,
-  Location } from
-'../../data/mockData';
 import { Table } from '../../components/shared/Table';
 import { Modal } from '../../components/shared/Modal';
 import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
+import { LoadingSpinner } from '../../components/shared/LoadingSpinner';
+
+import * as staffApi from '../../api/staff';
+import type { StaffMember } from '../../api/staff';
+import * as buildingsApi from '../../api/buildings';
+import type { Building } from '../../api/buildings';
+
 export function StaffManagement() {
-  const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const [searchQuery, setSearchQuery] = useState('');
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   // Form state
   const [formData, setFormData] = useState<Partial<StaffMember>>({
     name: '',
@@ -25,27 +31,62 @@ export function StaffManagement() {
     department: '',
     position: '',
     phone: '',
-    buildingId: initialLocations[0]?.id || '',
+    buildingId: '',
     room: ''
   });
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [staffData, buildingsData] = await Promise.all([
+        staffApi.getStaff(),
+        buildingsApi.getBuildings()
+      ]);
+      setStaff(staffData);
+      setBuildings(buildingsData);
+      if (buildingsData.length > 0 && !formData.buildingId) {
+        setFormData(prev => ({ ...prev, buildingId: String(buildingsData[0].id) }));
+      }
+    } catch (error) {
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const getBuildingName = (buildingId: string) => {
-    const location = initialLocations.find((loc) => loc.id === buildingId);
+    // some endpoints return numbers, let's be safe
+    const location = buildings.find((loc) => String(loc.id) === String(buildingId));
     return location ? location.name : 'Unknown Building';
   };
+
   const filteredStaff = staff.filter((member) => {
     const query = searchQuery.toLowerCase();
     const buildingName = getBuildingName(member.buildingId).toLowerCase();
     return (
-      member.name.toLowerCase().includes(query) ||
-      member.email.toLowerCase().includes(query) ||
-      member.department.toLowerCase().includes(query) ||
-      buildingName.includes(query));
-
+      (member.name || '').toLowerCase().includes(query) ||
+      (member.email || '').toLowerCase().includes(query) ||
+      (member.department || '').toLowerCase().includes(query) ||
+      buildingName.includes(query)
+    );
   });
+
   const handleOpenForm = (member?: StaffMember) => {
     if (member) {
       setEditingStaff(member);
-      setFormData(member);
+      setFormData({
+        name: member.name || '',
+        email: member.email || '',
+        department: member.department || '',
+        position: member.position || '',
+        phone: member.phone || '',
+        buildingId: member.buildingId ? String(member.buildingId) : '',
+        room: member.room || ''
+      });
     } else {
       setEditingStaff(null);
       setFormData({
@@ -54,41 +95,47 @@ export function StaffManagement() {
         department: '',
         position: '',
         phone: '',
-        buildingId: initialLocations[0]?.id || '',
+        buildingId: buildings.length > 0 ? String(buildings[0].id) : '',
         room: ''
       });
     }
     setIsFormOpen(true);
   };
-  const handleSave = (e: React.FormEvent) => {
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingStaff) {
-      setStaff(
-        staff.map((s) =>
-        s.id === editingStaff.id ?
-        {
-          ...formData,
-          id: s.id
-        } as StaffMember :
-        s
-        )
-      );
-      toast.success('Staff member updated successfully');
-    } else {
-      const newStaff = {
-        ...formData,
-        id: Date.now().toString()
-      } as StaffMember;
-      setStaff([...staff, newStaff]);
-      toast.success('Staff member added successfully');
+    setIsSubmitting(true);
+    try {
+      if (editingStaff) {
+        await staffApi.updateStaff(editingStaff.id, formData);
+        toast.success('Staff member updated successfully');
+      } else {
+        await staffApi.createStaff(formData);
+        toast.success('Staff member added successfully');
+      }
+      setIsFormOpen(false);
+      fetchData(); // Refresh the list
+    } catch (error) {
+      toast.error(editingStaff ? 'Failed to update staff' : 'Failed to create staff');
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsFormOpen(false);
   };
-  const handleDelete = () => {
+
+  const handleDelete = async () => {
     if (staffToDelete) {
-      setStaff(staff.filter((s) => s.id !== staffToDelete.id));
-      toast.success('Staff member deleted successfully');
-      setStaffToDelete(null);
+      setIsSubmitting(true);
+      try {
+        await staffApi.deleteStaff(staffToDelete.id);
+        toast.success('Staff member deleted successfully');
+        setIsDeleteOpen(false);
+        setStaffToDelete(null);
+        fetchData();
+      } catch (error) {
+        toast.error('Failed to delete staff member');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
   const columns = [
@@ -251,6 +298,23 @@ export function StaffManagement() {
                 placeholder="e.g. Senior Lecturer" />
               
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Phone
+              </label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  phone: e.target.value
+                })
+                }
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                placeholder="e.g. +251 911 234 567" />
+              
+            </div>
           </div>
 
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-2">
@@ -276,7 +340,7 @@ export function StaffManagement() {
                   <option value="" disabled>
                     Select a building
                   </option>
-                  {initialLocations.map((loc) =>
+                  {buildings.map((loc) =>
                   <option key={loc.id} value={loc.id}>
                       {loc.name}
                     </option>

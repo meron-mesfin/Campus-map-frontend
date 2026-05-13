@@ -1,119 +1,75 @@
-import React, { useState } from 'react';
-import { chartData } from '../../data/mockData';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-const COLORS = ['#00a651', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#64748b'];
+import React, { useEffect, useState } from 'react';
+import { getReports, getAnalytics, Reports as ReportsType, Analytics } from '../../api/admin';
+import { LoadingSpinner } from '../../components/shared/LoadingSpinner';
+import { toast } from 'sonner';
+
 export function Reports() {
-  const [timeRange, setTimeRange] = useState('6m');
-  const filteredSearches = timeRange === '6m' ? chartData.searchesOverTime.slice(-6) : chartData.searchesOverTime;
-  return <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Data Reports
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400">
-            Analyze campus usage and feedback metrics.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
-            <option value="6m">Last 6 Months</option>
-            <option value="1y">Last Year</option>
-          </select>
-        </div>
+  const [reports, setReports] = useState<ReportsType | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getReports(), getAnalytics()])
+      .then(([r, a]) => { setReports(r); setAnalytics(a); })
+      .catch(() => toast.error('Failed to load reports'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><LoadingSpinner /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Campus Reports</h1>
+        <p className="text-slate-500 dark:text-slate-400">Overview of campus activity and statistics.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Buildings', value: reports?.totalBuildings ?? 0 },
+          { label: 'Total Feedback', value: reports?.totalFeedback ?? 0 },
+          { label: 'Pending Feedback', value: reports?.pendingFeedback ?? 0 },
+          { label: 'Active Users', value: reports?.activeUsers ?? 0 },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{stat.label}</p>
+            <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stat.value}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Searches Line Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 lg:col-span-2">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">
-            Location Searches Over Time
-          </h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filteredSearches}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{
-                fill: '#64748b'
-              }} />
-                <YAxis axisLine={false} tickLine={false} tick={{
-                fill: '#64748b'
-              }} />
-                <Tooltip contentStyle={{
-                backgroundColor: '#1e293b',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff'
-              }} itemStyle={{
-                color: '#fff'
-              }} />
-                <Line type="monotone" dataKey="searches" stroke="#00a651" strokeWidth={3} dot={{
-                r: 4,
-                fill: '#00a651'
-              }} activeDot={{
-                r: 6
-              }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Most Favorited Buildings</h2>
+          {analytics?.topFavorites?.length ? (
+            <div className="space-y-3">
+              {analytics.topFavorites.map((b, i) => (
+                <div key={b.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-slate-400 w-5">#{i + 1}</span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">{b.name}</span>
+                  </div>
+                  <span className="text-xs text-slate-500">{b.count} favorites</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-sm text-slate-400 text-center py-4">No data available</p>}
         </div>
 
-        {/* Locations by Type Bar Chart */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">
-            Locations by Type
-          </h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData.locationsByType} layout="vertical" margin={{
-              left: 20
-            }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" opacity={0.2} />
-                <XAxis type="number" axisLine={false} tickLine={false} tick={{
-                fill: '#64748b'
-              }} />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{
-                fill: '#64748b'
-              }} />
-                <Tooltip cursor={{
-                fill: '#f1f5f9',
-                opacity: 0.1
-              }} contentStyle={{
-                backgroundColor: '#1e293b',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff'
-              }} />
-                <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24}>
-                  {chartData.locationsByType.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Feedback Ratings Pie Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">
-            Feedback Ratings Distribution
-          </h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={chartData.feedbackRatings.filter((d) => d.value > 0)} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                  {chartData.feedbackRatings.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{
-                backgroundColor: '#1e293b',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff'
-              }} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Buildings by Category</h2>
+          {analytics?.buildingsByCategory?.length ? (
+            <div className="space-y-3">
+              {analytics.buildingsByCategory.map((c, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">{c.category ?? 'Unknown'}</span>
+                  <span className="text-xs text-slate-500">{c.count} buildings</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-sm text-slate-400 text-center py-4">No data available</p>}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }

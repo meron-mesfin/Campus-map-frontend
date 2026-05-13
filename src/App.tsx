@@ -19,65 +19,72 @@ import { SystemDashboard } from './pages/system/SystemDashboard';
 import { ManageAdmins } from './pages/system/ManageAdmins';
 import { ActivityLogs } from './pages/system/ActivityLogs';
 import { SystemReports } from './pages/system/SystemReports';
-// Protected route wrapper — redirects to login if not authenticated
+import { SystemFeedback } from './pages/system/SystemFeedback';
+
+type DisplayRole = 'Campus Admin' | 'System Admin';
+
+function toDisplayRole(role: string | undefined): DisplayRole {
+  return role === 'system_admin' ? 'System Admin' : 'Campus Admin';
+}
+
 function ProtectedRoute({
   children,
-  allowedRole
-
-
-
-}: {children: React.ReactNode;allowedRole?: 'Campus Admin' | 'System Admin';}) {
+  allowedRole,
+}: {
+  children: React.ReactNode;
+  allowedRole?: DisplayRole;
+}) {
   const { isAuthenticated, user } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  // If a specific role is required and user doesn't match, redirect to their own dashboard
-  if (allowedRole && user?.role !== allowedRole) {
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  if (allowedRole && toDisplayRole(user?.role) !== allowedRole) {
     return (
       <Navigate
-        to={user?.role === 'System Admin' ? '/system' : '/campus'}
-        replace />);
-
-
+        to={user?.role === 'system_admin' ? '/system' : '/campus'}
+        replace
+      />
+    );
   }
   return <>{children}</>;
 }
-// Redirect authenticated users away from login
-function PublicRoute({ children }: {children: React.ReactNode;}) {
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
   if (isAuthenticated && user) {
     return (
       <Navigate
-        to={user.role === 'System Admin' ? '/system' : '/campus'}
-        replace />);
-
-
+        to={user.role === 'system_admin' ? '/system' : '/campus'}
+        replace
+      />
+    );
   }
   return <>{children}</>;
 }
+
 function AppRoutes() {
   const { user } = useAuth();
+  const displayRole = toDisplayRole(user?.role);
+
   return (
     <Routes>
-      {/* Public: Login */}
       <Route
         path="/login"
         element={
-        <PublicRoute>
+          <PublicRoute>
             <Login />
           </PublicRoute>
-        } />
-      
+        }
+      />
 
       {/* Campus Admin Routes */}
       <Route
         path="/campus"
         element={
-        <ProtectedRoute allowedRole="Campus Admin">
+          <ProtectedRoute allowedRole="Campus Admin">
             <DashboardLayout role="Campus Admin" />
           </ProtectedRoute>
-        }>
-        
+        }
+      >
         <Route index element={<CampusDashboard />} />
         <Route path="locations" element={<Locations />} />
         <Route path="staff" element={<StaffManagement />} />
@@ -89,37 +96,36 @@ function AppRoutes() {
       <Route
         path="/system"
         element={
-        <ProtectedRoute allowedRole="System Admin">
+          <ProtectedRoute allowedRole="System Admin">
             <DashboardLayout role="System Admin" />
           </ProtectedRoute>
-        }>
-        
+        }
+      >
         <Route index element={<SystemDashboard />} />
         <Route path="admins" element={<ManageAdmins />} />
         <Route path="logs" element={<ActivityLogs />} />
+        <Route path="feedback" element={<SystemFeedback />} />
         <Route path="reports" element={<SystemReports />} />
       </Route>
 
-      {/* Shared Settings — accessible by any authenticated user */}
+      {/* Shared Settings */}
       <Route
         path="/settings"
         element={
-        <ProtectedRoute>
-            <DashboardLayout role={user?.role || 'Campus Admin'} />
+          <ProtectedRoute>
+            <DashboardLayout role={displayRole} />
           </ProtectedRoute>
-        }>
-        
+        }
+      >
         <Route index element={<Settings />} />
       </Route>
 
-      {/* Root redirect */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>);
-
+    </Routes>
+  );
 }
+
 export function App() {
   return (
     <ThemeProvider>
@@ -129,6 +135,6 @@ export function App() {
         </BrowserRouter>
         <Toaster position="top-right" richColors />
       </AuthProvider>
-    </ThemeProvider>);
-
+    </ThemeProvider>
+  );
 }

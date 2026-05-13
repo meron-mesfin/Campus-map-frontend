@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Table } from '../../components/shared/Table';
 import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
-import { ShieldCheckIcon, ClockIcon, MessageSquareIcon, MapPinIcon, Trash2Icon } from 'lucide-react';
+import { ShieldCheckIcon, ClockIcon, MessageSquareIcon, UserIcon, Trash2Icon } from 'lucide-react';
 import * as adminApi from '../../api/admin';
 import { toast } from 'sonner';
 
-export function Feedback() {
+export function SystemFeedback() {
   const [feedback, setFeedback] = useState<adminApi.FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'pending' | 'resolved'>('pending');
@@ -19,10 +19,10 @@ export function Feedback() {
   const fetchFeedback = async () => {
     setLoading(true);
     try {
-      const data = await adminApi.getFeedback(statusFilter, 'building');
+      const data = await adminApi.getFeedback(statusFilter, 'system');
       setFeedback(data);
     } catch (err) {
-      toast.error('Failed to load feedback');
+      toast.error('Failed to load system feedback');
     } finally {
       setLoading(false);
     }
@@ -32,7 +32,7 @@ export function Feedback() {
     try {
       await adminApi.resolveFeedback(id);
       setFeedback(prev => prev.filter(f => f.id !== id));
-      toast.success('Feedback resolved');
+      toast.success('Feedback marked as resolved');
     } catch (err) {
       toast.error('Failed to resolve feedback');
     }
@@ -43,7 +43,7 @@ export function Feedback() {
     try {
       await adminApi.deleteFeedback(feedbackToDelete.id);
       setFeedback(prev => prev.filter(f => f.id !== feedbackToDelete.id));
-      toast.success('Feedback deleted');
+      toast.success('Feedback deleted successfully');
       setIsDeleteOpen(false);
     } catch (err) {
       toast.error('Failed to delete feedback');
@@ -52,21 +52,33 @@ export function Feedback() {
 
   const columns = [
     {
-      header: 'Location',
+      header: 'Date & User',
       accessor: (f: adminApi.FeedbackItem) => (
         <div className="flex flex-col">
-          <span className="font-medium text-slate-900 dark:text-white">{f.building_name || 'Unknown'}</span>
-          <div className="flex items-center gap-1 text-xs text-slate-500">
-            <MapPinIcon size={12} />
-            {f.category}
+          <span className="text-xs text-slate-500 font-medium">
+            {new Date(f.created_at).toLocaleDateString()}
+          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <UserIcon size={12} className="text-slate-400" />
+            <span className="text-sm text-slate-700 dark:text-slate-300">
+              {f.user_id ? 'Authenticated User' : 'Anonymous'}
+            </span>
           </div>
         </div>
       )
     },
     {
+      header: 'Category',
+      accessor: (f: adminApi.FeedbackItem) => (
+        <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
+          {f.category || 'General'}
+        </span>
+      )
+    },
+    {
       header: 'Message',
       accessor: (f: adminApi.FeedbackItem) => (
-        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title={f.message}>
+        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md line-clamp-2" title={f.message}>
           {f.message}
         </p>
       )
@@ -78,7 +90,7 @@ export function Feedback() {
           {f.status === 'pending' ? (
             <button
               onClick={() => handleResolve(f.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-400 rounded-lg transition-colors text-xs font-medium"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 rounded-lg transition-colors text-xs font-medium border border-emerald-100 dark:border-emerald-800"
             >
               <ShieldCheckIcon size={14} />
               Resolve
@@ -86,7 +98,7 @@ export function Feedback() {
           ) : (
             <span className="text-xs text-emerald-600 font-medium px-2 py-1 bg-emerald-50 dark:bg-emerald-900/10 rounded-md">Resolved</span>
           )}
-
+          
           <button
             onClick={() => {
               setFeedbackToDelete(f);
@@ -106,8 +118,8 @@ export function Feedback() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Location Feedback</h1>
-          <p className="text-slate-500 dark:text-slate-400">Review and resolve user-submitted feedback about campus locations.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">System Feedback</h1>
+          <p className="text-slate-500 dark:text-slate-400">Manage feedback related to platform performance and bugs.</p>
         </div>
 
         <div className="flex bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm w-fit">
@@ -142,8 +154,8 @@ export function Feedback() {
             <MessageSquareIcon size={24} />
           </div>
           <h3 className="text-lg font-medium text-slate-900 dark:text-white">No feedback found</h3>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            {statusFilter === 'pending' ? "No pending feedback to address." : "No resolved feedback yet."}
+          <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+            {statusFilter === 'pending' ? "Great job! All system feedback has been addressed." : "No resolved feedback to display."}
           </p>
         </div>
       )}
@@ -153,7 +165,7 @@ export function Feedback() {
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDelete}
         title="Delete Feedback"
-        message="Are you sure you want to delete this feedback? This action cannot be undone."
+        message="Are you sure you want to delete this feedback entry? This action cannot be undone."
         confirmText="Delete"
         variant="danger"
       />
