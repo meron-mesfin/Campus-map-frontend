@@ -65,6 +65,7 @@ const defaultForm = () => ({
   capacity: undefined,
   opening_hours: '',
   description: '',
+  facilities: '',
   department_id: '',
 });
 
@@ -228,7 +229,8 @@ export function Rooms() {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       room.name.toLowerCase().includes(q) ||
-      room.room_number.toLowerCase().includes(q);
+      room.room_number.toLowerCase().includes(q) ||
+      (room.facilities && room.facilities.toLowerCase().includes(q));
     const matchesBuilding =
       buildingFilter === 'all' || String(room.building_id) === String(buildingFilter);
     const matchesType = typeFilter === 'all' || room.type === typeFilter;
@@ -250,6 +252,7 @@ export function Rooms() {
         capacity: room.capacity,
         opening_hours: room.opening_hours ?? '',
         description: room.description ?? '',
+        facilities: room.facilities ?? '',
         department_id: room.department_id ?? '',
       });
     } else {
@@ -312,6 +315,11 @@ export function Rooms() {
         <div>
           <div className="font-medium text-slate-900 dark:text-white">{room.name}</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">{room.room_number}</div>
+          {room.facilities && (
+            <div className="text-xs text-primary-600 dark:text-primary-400 font-medium mt-1 truncate max-w-[160px]" title={room.facilities}>
+              🛠️ {room.facilities}
+            </div>
+          )}
         </div>
       ),
       className: 'min-w-[180px]',
@@ -658,6 +666,21 @@ export function Rooms() {
             <div className="flex items-end">
               {/* placeholder to maintain 2-col grid balance */}
             </div>
+          </div>
+
+          {/* Full-width Facilities / Equipment */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Facilities / Equipment (Optional)
+            </label>
+            <input
+              type="text"
+              value={formData.facilities ?? ''}
+              onChange={(e) => setFormData({ ...formData, facilities: e.target.value })}
+              placeholder="e.g. Projector, Whiteboard, 30 Computers, Smart Board"
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0d6a49] outline-none"
+            />
+            <p className="text-xs text-slate-400 mt-1">Separate items with commas (e.g. Projector, Whiteboard, Smart Board)</p>
           </div>
 
           {/* Full-width description */}

@@ -28,10 +28,10 @@ export async function login(email, password) {
 /**
  * PUT /api/auth/profile
  */
-export async function updateProfile(fullName, email, profilePicture) {
+export async function updateProfile(fullName, email, profilePicture, currentPassword, newPassword) {
   const data = await apiFetch('/auth/profile', {
     method: 'PUT',
-    body: JSON.stringify({ fullName, email, profilePicture }),
+    body: JSON.stringify({ fullName, email, profilePicture, currentPassword, newPassword }),
   });
   return data.user;
 }

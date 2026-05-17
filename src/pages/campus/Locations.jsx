@@ -65,6 +65,7 @@ export function Locations() {
     latitude: 10.3287, longitude: 37.7454, image_url: '',
   });
   const [mapType, setMapType] = useState('standard');
+  const [selectedMapCategory, setSelectedMapCategory] = useState('All');
   const [errors, setErrors] = useState({});
 
   const validate = (field, value) => {
@@ -113,19 +114,6 @@ export function Locations() {
         newErrors.longitude = 'Longitude must be between -180 and 180';
       } else {
         delete newErrors.longitude;
-      }
-    }
-
-    if (field === 'contact') {
-      if (value && value.trim()) {
-        const ethiopianPhoneRegex = /^(?:\+251|0)[79]\d{8}$/;
-        if (!ethiopianPhoneRegex.test(value.replace(/\s+/g, ''))) {
-          newErrors.contact = 'Invalid phone number. Must match Ethiopian mobile format (e.g. +251912345678 or 0912345678)';
-        } else {
-          delete newErrors.contact;
-        }
-      } else {
-        delete newErrors.contact;
       }
     }
 
@@ -179,12 +167,6 @@ export function Locations() {
       tempErrors.longitude = 'Longitude must be between -180 and 180';
     }
     
-    if (formData.contact && formData.contact.trim()) {
-      const ethiopianPhoneRegex = /^(?:\+251|0)[79]\d{8}$/;
-      if (!ethiopianPhoneRegex.test(formData.contact.replace(/\s+/g, ''))) {
-        tempErrors.contact = 'Invalid phone number. Must match Ethiopian mobile format (e.g. +251912345678 or 0912345678)';
-      }
-    }
 
     if (formData.building_number && formData.building_number.trim()) {
       const bNumRegex = /^[A-Za-z0-9\-_]+$/;
@@ -242,11 +224,10 @@ export function Locations() {
         latitude: loc.latitude, longitude: loc.longitude, image_url: loc.image_url ?? '',
         building_number: loc.building_number ?? '',
         opening_hours: loc.opening_hours ?? '',
-        contact: loc.contact ?? '',
       });
     } else {
       setEditingLocation(null);
-      setFormData({ name: '', category: 'Academic', description: '', latitude: 10.3287, longitude: 37.7454, image_url: '', building_number: '', opening_hours: '', contact: '' });
+      setFormData({ name: '', category: 'Academic', description: '', latitude: 10.3287, longitude: 37.7454, image_url: '', building_number: '', opening_hours: '' });
     }
     setIsFormOpen(true);
   };
@@ -499,26 +480,61 @@ export function Locations() {
                 </button>
               </div>
             </div>
+
+            {/* Category Filter Pills Overlay */}
+            <div 
+              className="absolute top-4 left-14 z-[1000] flex items-center gap-1.5 overflow-x-auto py-1 px-1 max-w-[calc(100%-150px)] no-scrollbar"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style>{`
+                .no-scrollbar::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              {['All', ...CATEGORIES].map((cat) => {
+                const isActive = selectedMapCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedMapCategory(cat);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-md transition-all duration-200 ${
+                      isActive
+                        ? 'bg-primary-600 text-white border border-primary-600 hover:bg-primary-700 scale-105'
+                        : 'bg-white/95 dark:bg-slate-800/95 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+
             <TileLayer
               attribution={mapType === 'satellite' ? 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community' : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}
               url={mapLayers[mapType]}
             />
-            {filtered.map((loc) => (
-              <Marker
-                key={loc.id}
-                position={[loc.latitude, loc.longitude]}
-                eventHandlers={{ click: () => handleOpenForm(loc) }}>
-                <Tooltip direction="top" offset={[0, -20]} opacity={1}>
-                  <div className="font-bold text-sm text-center">
-                    {loc.name}
-                    <div className="text-xs text-slate-500 font-normal">{loc.category}</div>
-                    <div className="text-xs text-slate-500 font-normal mt-1 flex items-center justify-center gap-1">
-                      <LayoutGridIcon size={10} /> {loc.room_count || 0} rooms
+            {filtered
+              .filter((loc) => selectedMapCategory === 'All' || loc.category === selectedMapCategory)
+              .map((loc) => (
+                <Marker
+                  key={loc.id}
+                  position={[loc.latitude, loc.longitude]}
+                  eventHandlers={{ click: () => handleOpenForm(loc) }}>
+                  <Tooltip direction="top" offset={[0, -20]} opacity={1}>
+                    <div className="font-bold text-sm text-center">
+                      {loc.name}
+                      <div className="text-xs text-slate-500 font-normal">{loc.category}</div>
+                      <div className="text-xs text-slate-500 font-normal mt-1 flex items-center justify-center gap-1">
+                        <LayoutGridIcon size={10} /> {loc.room_count || 0} rooms
+                      </div>
                     </div>
-                  </div>
-                </Tooltip>
-              </Marker>
-            ))}
+                  </Tooltip>
+                </Marker>
+              ))}
           </MapContainer>
         </div>
       )}
@@ -615,25 +631,6 @@ export function Locations() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Opening Hours</label>
               <input type="text" value={formData.opening_hours} onChange={(e) => setFormData({ ...formData, opening_hours: e.target.value })} placeholder="e.g. Mon-Fri: 8am-5pm" className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contact Details</label>
-            <input
-              type="text"
-              value={formData.contact}
-              onBlur={(e) => validate('contact', e.target.value)}
-              onChange={(e) => {
-                setFormData({ ...formData, contact: e.target.value });
-                if (errors.contact) validate('contact', e.target.value);
-              }}
-              placeholder="e.g. +251 911 000 000"
-              className={`w-full px-4 py-2 rounded-lg border bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 ${
-                errors.contact
-                  ? 'border-red-500 focus:ring-red-500 shadow-sm shadow-red-100 dark:shadow-none'
-                  : 'border-slate-300 dark:border-slate-600 focus:ring-primary-500'
-              }`}
-            />
-            {errors.contact && <p className="text-xs text-red-500 mt-1">{errors.contact}</p>}
           </div>
 
           {editingLocation && (

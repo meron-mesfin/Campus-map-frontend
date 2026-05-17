@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { UserIcon, MoonIcon } from 'lucide-react';
+import { UserIcon, MoonIcon, LockIcon } from 'lucide-react';
 import * as authApi from '../api/auth';
 import * as adminApi from '../api/admin';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,13 @@ export function Settings() {
     email: authUser?.email || '',
     profilePicture: authUser?.profile_picture || ''
   });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Sync form data when authUser changes (e.g. after initial load)
   useEffect(() => {
@@ -69,6 +76,48 @@ export function Settings() {
       toast.error(err.message || 'Update failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast.error('All fields are required');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (passwordData.newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+    
+    // Ethiopian / Strongest Password criteria: letters + numbers + special characters
+    const hasLetter = /[a-zA-Z]/.test(passwordData.newPassword);
+    const hasNumber = /[0-9]/.test(passwordData.newPassword);
+    const hasSpecial = /[^a-zA-Z0-9]/.test(passwordData.newPassword);
+    if (!hasLetter || !hasNumber || !hasSpecial) {
+      toast.error('Password must contain at least one letter, one number, and one special character');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      await authApi.updateProfile(
+        formData.fullName,
+        formData.email,
+        formData.profilePicture,
+        passwordData.currentPassword,
+        passwordData.newPassword
+      );
+      toast.success('Password updated successfully');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      toast.error(err.message || 'Failed to update password');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -156,6 +205,75 @@ export function Settings() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Change Password Section */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center gap-4">
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg">
+              <LockIcon size={24} />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Change Password
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Ensure your account is using a secure password
+              </p>
+            </div>
+          </div>
+          <form onSubmit={handleUpdatePassword} className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Current Password
+                </label>
+                <input 
+                  required
+                  type="password" 
+                  value={passwordData.currentPassword} 
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" 
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  New Password
+                </label>
+                <input 
+                  required
+                  type="password" 
+                  value={passwordData.newPassword} 
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" 
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Confirm New Password
+                </label>
+                <input 
+                  required
+                  type="password" 
+                  value={passwordData.confirmPassword} 
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" 
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button 
+                type="submit"
+                disabled={passwordLoading}
+                className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+              >
+                {passwordLoading ? <LoadingSpinner size={16} /> : 'Update Password'}
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* Feedback Section (Building Only for Campus Admin) */}

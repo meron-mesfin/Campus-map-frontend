@@ -15,6 +15,8 @@ export function Departments() {
   const [loading, setLoading] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [buildingFilter, setBuildingFilter] = useState('all');
+  
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -25,6 +27,8 @@ export function Departments() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    phone: '',
+    email: '',
     building_id: ''
   });
   const [errors, setErrors] = useState({});
@@ -51,6 +55,32 @@ export function Departments() {
         delete newErrors.description;
       }
     }
+
+    if (field === 'phone') {
+      if (value && value.trim()) {
+        const ethiopianPhoneRegex = /^(?:\+251|0)[79]\d{8}$/;
+        if (!ethiopianPhoneRegex.test(value.replace(/\s+/g, ''))) {
+          newErrors.phone = 'Invalid phone number. Must match Ethiopian mobile format (e.g. +251912345678 or 0912345678)';
+        } else {
+          delete newErrors.phone;
+        }
+      } else {
+        delete newErrors.phone;
+      }
+    }
+
+    if (field === 'email') {
+      if (value && value.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value.trim())) {
+          newErrors.email = 'Invalid email address';
+        } else {
+          delete newErrors.email;
+        }
+      } else {
+        delete newErrors.email;
+      }
+    }
     
     setErrors(newErrors);
     return newErrors;
@@ -69,6 +99,20 @@ export function Departments() {
     
     if (formData.description && formData.description.trim().length > 500) {
       tempErrors.description = 'Description must not exceed 500 characters';
+    }
+
+    if (formData.phone && formData.phone.trim()) {
+      const ethiopianPhoneRegex = /^(?:\+251|0)[79]\d{8}$/;
+      if (!ethiopianPhoneRegex.test(formData.phone.replace(/\s+/g, ''))) {
+        tempErrors.phone = 'Invalid phone number. Must match Ethiopian mobile format (e.g. +251912345678 or 0912345678)';
+      }
+    }
+
+    if (formData.email && formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        tempErrors.email = 'Invalid email address';
+      }
     }
     
     setErrors(tempErrors);
@@ -97,10 +141,14 @@ export function Departments() {
 
   const filteredDepts = departments.filter((dept) => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
       (dept.name || '').toLowerCase().includes(query) ||
-      (dept.description || '').toLowerCase().includes(query)
-    );
+      (dept.description || '').toLowerCase().includes(query) ||
+      (dept.phone || '').toLowerCase().includes(query) ||
+      (dept.email || '').toLowerCase().includes(query);
+    const matchesBuilding =
+      buildingFilter === 'all' || String(dept.building_id) === String(buildingFilter);
+    return matchesSearch && matchesBuilding;
   });
 
   const handleOpenForm = (dept) => {
@@ -110,6 +158,8 @@ export function Departments() {
       setFormData({
         name: dept.name || '',
         description: dept.description || '',
+        phone: dept.phone || '',
+        email: dept.email || '',
         building_id: dept.building_id ? String(dept.building_id) : ''
       });
     } else {
@@ -117,7 +167,9 @@ export function Departments() {
       setFormData({
         name: '',
         description: '',
-        building_id: ''
+        phone: '',
+        email: '',
+        building_id: buildingFilter !== 'all' ? buildingFilter : ''
       });
     }
     setIsFormOpen(true);
@@ -166,7 +218,7 @@ export function Departments() {
 
   const columns = [
     {
-      header: 'Department Name',
+      header: 'Department',
       accessor: (dept) => (
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
@@ -180,15 +232,33 @@ export function Departments() {
               <MapIcon size={12} />
               {dept.building_name || 'No building assigned'}
             </div>
+            {dept.phone && <div className="text-xs text-slate-500 mt-0.5">📞 {dept.phone}</div>}
+            {dept.email && <div className="text-xs text-slate-500">✉️ {dept.email}</div>}
           </div>
         </div>
       ),
       className: 'min-w-[250px]'
     },
     {
+      header: 'Staff Count',
+      accessor: (dept) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+          {dept.staff_count || 0} Staff
+        </span>
+      )
+    },
+    {
+      header: 'Room Count',
+      accessor: (dept) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+          {dept.room_count || 0} Rooms
+        </span>
+      )
+    },
+    {
       header: 'Description',
       accessor: (dept) => (
-        <div className="text-sm text-slate-500 dark:text-slate-400 max-w-md truncate">
+        <div className="text-sm text-slate-500 dark:text-slate-400 max-w-sm truncate" title={dept.description}>
           {dept.description || 'No description'}
         </div>
       )
@@ -244,13 +314,25 @@ export function Departments() {
       </div>
 
       <div className="space-y-4">
-        <input
-          type="text"
-          placeholder="Search by name or description..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full max-w-md px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-        />
+        <div className="flex flex-wrap gap-3">
+          <input
+            type="text"
+            placeholder="Search by name, contact, or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 min-w-[200px] max-w-md px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0d6a49] outline-none"
+          />
+          <select
+            value={buildingFilter}
+            onChange={(e) => setBuildingFilter(e.target.value)}
+            className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0d6a49] outline-none"
+          >
+            <option value="all">All Buildings</option>
+            {buildings.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </div>
         
         <Table
           data={filteredDepts}
@@ -304,6 +386,48 @@ export function Departments() {
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Contact Phone (Optional)
+            </label>
+            <input
+              type="text"
+              value={formData.phone}
+              onBlur={(e) => validate('phone', e.target.value)}
+              onChange={(e) => {
+                setFormData({ ...formData, phone: e.target.value });
+                if (errors.phone) validate('phone', e.target.value);
+              }}
+              className={`w-full px-4 py-2 rounded-lg border bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 ${
+                errors.phone
+                  ? 'border-red-500 focus:ring-red-500 shadow-sm shadow-red-100 dark:shadow-none'
+                  : 'border-slate-300 dark:border-slate-600 focus:ring-[#0d6a49]'
+              }`}
+              placeholder="e.g. +251 912 345 678"
+            />
+            {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Contact Email (Optional)
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onBlur={(e) => validate('email', e.target.value)}
+              onChange={(e) => {
+                setFormData({ ...formData, email: e.target.value });
+                if (errors.email) validate('email', e.target.value);
+              }}
+              className={`w-full px-4 py-2 rounded-lg border bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 ${
+                errors.email
+                  ? 'border-red-500 focus:ring-red-500 shadow-sm shadow-red-100 dark:shadow-none'
+                  : 'border-slate-300 dark:border-slate-600 focus:ring-[#0d6a49]'
+              }`}
+              placeholder="e.g. cs@dmu.edu.et"
+            />
+            {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">

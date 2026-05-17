@@ -80,13 +80,21 @@ export async function deleteFeedback(id) {
 // ─── Reports & Analytics ─────────────────────────────────────────────────────
 
 /** GET /api/admin/reports */
-export async function getReports() {
-  return apiFetch('/admin/reports');
+export async function getReports(startDate, endDate) {
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch(`/admin/reports${query}`);
 }
 
 /** GET /api/admin/reports/analytics */
-export async function getAnalytics() {
-  return apiFetch('/admin/reports/analytics');
+export async function getAnalytics(startDate, endDate) {
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch(`/admin/reports/analytics${query}`);
 }
 
 // ─── Staff / Employees ───────────────────────────────────────────────────────
