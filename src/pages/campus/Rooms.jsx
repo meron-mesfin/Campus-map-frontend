@@ -83,6 +83,13 @@ export function Rooms() {
   const [searchQuery, setSearchQuery] = useState('');
   const [buildingFilter, setBuildingFilter] = useState(initialBuilding);
   const [typeFilter, setTypeFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, buildingFilter, typeFilter]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -236,6 +243,12 @@ export function Rooms() {
     const matchesType = typeFilter === 'all' || room.type === typeFilter;
     return matchesSearch && matchesBuilding && matchesType;
   });
+
+  const totalPages = Math.ceil(filteredRooms.length / itemsPerPage);
+  const paginatedRooms = filteredRooms.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // ─── Modal helpers ─────────────────────────────────────────────────────────
 
@@ -471,11 +484,60 @@ export function Rooms() {
 
       {/* Table */}
       <Table
-        data={filteredRooms}
+        data={paginatedRooms}
         columns={columns}
         keyExtractor={(room) => String(room.id)}
         emptyMessage="No rooms found. Try adjusting your filters."
       />
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-500 dark:text-slate-400">
+            Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min((currentPage - 1) * itemsPerPage + 1, filteredRooms.length)}</span> to{' '}
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {Math.min(currentPage * itemsPerPage, filteredRooms.length)}
+            </span>{' '}
+            of <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredRooms.length}</span> results
+          </div>
+          
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            >
+              Previous
+            </button>
+            
+            {Array.from({ length: totalPages }, (_, idx) => {
+              const pageNum = idx + 1;
+              const isSelected = pageNum === currentPage;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 flex items-center justify-center text-xs font-semibold rounded-lg border transition-colors ${
+                    isSelected
+                      ? 'border-[#0d6a49] bg-[#E8F5E9] text-[#0d6a49] font-bold'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       <Modal

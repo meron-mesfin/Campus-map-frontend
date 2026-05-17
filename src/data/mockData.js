@@ -166,59 +166,6 @@ export const initialAdmins = [
   }
 ];
 
-export const initialStaff = [
-  {
-    id: '1',
-    name: 'Dr. Sarah Jenkins',
-    email: 's.jenkins@dmu.ac.uk',
-    department: 'Computer Science',
-    position: 'Senior Lecturer',
-    phone: '+44 116 250 1234',
-    buildingId: '3',
-    room: 'QB 2.14'
-  },
-  {
-    id: '2',
-    name: 'Prof. Michael Chang',
-    email: 'm.chang@dmu.ac.uk',
-    department: 'Engineering',
-    position: 'Head of Department',
-    phone: '+44 116 250 2345',
-    buildingId: '3',
-    room: 'QB 3.01'
-  },
-  {
-    id: '3',
-    name: 'Emma Thompson',
-    email: 'e.thompson@dmu.ac.uk',
-    department: 'Art and Design',
-    position: 'Studio Technician',
-    phone: '+44 116 250 3456',
-    buildingId: '1',
-    room: 'VP 1.05'
-  },
-  {
-    id: '4',
-    name: 'David Wilson',
-    email: 'd.wilson@dmu.ac.uk',
-    department: 'Business School',
-    position: 'Lecturer',
-    phone: '+44 116 250 4567',
-    buildingId: '2',
-    room: 'HA 4.22'
-  },
-  {
-    id: '5',
-    name: 'Dr. Lisa Patel',
-    email: 'l.patel@dmu.ac.uk',
-    department: 'Life Sciences',
-    position: 'Research Fellow',
-    phone: '+44 116 250 5678',
-    buildingId: '6',
-    room: 'HB 1.12'
-  }
-];
-
 export const initialLogs = [
   {
     id: '1',

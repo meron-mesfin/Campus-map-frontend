@@ -12,7 +12,6 @@ import { Settings } from './pages/Settings';
 import { CampusDashboard } from './pages/campus/CampusDashboard';
 import { Locations } from './pages/campus/Locations';
 import { Rooms } from './pages/campus/Rooms';
-import { StaffManagement } from './pages/campus/StaffManagement';
 import { Departments } from './pages/campus/Departments';
 import { Feedback } from './pages/campus/Feedback';
 import { Reports as CampusReports } from './pages/campus/Reports';
@@ -83,7 +82,6 @@ function AppRoutes() {
         <Route path="locations" element={<Locations />} />
         <Route path="rooms" element={<Rooms />} />
         <Route path="departments" element={<Departments />} />
-        <Route path="staff" element={<StaffManagement />} />
         <Route path="feedback" element={<Feedback />} />
         <Route path="reports" element={<CampusReports />} />
       </Route>

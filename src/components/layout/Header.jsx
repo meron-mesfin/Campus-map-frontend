@@ -424,7 +424,7 @@ export function Header({ toggleSidebar, role }) {
                       <p className="text-sm text-slate-700 dark:text-slate-200">
                         {isSystemAdmin ?
                       'Full system access · Manage admins · View all logs' :
-                      'Manage locations, staff & feedback for assigned campus'}
+                      'Manage locations & feedback for assigned campus'}
                       </p>
                     </div>
                   </div>

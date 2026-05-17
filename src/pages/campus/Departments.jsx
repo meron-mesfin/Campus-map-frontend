@@ -16,6 +16,13 @@ export function Departments() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, buildingFilter]);
   
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -151,6 +158,12 @@ export function Departments() {
     return matchesSearch && matchesBuilding;
   });
 
+  const totalPages = Math.ceil(filteredDepts.length / itemsPerPage);
+  const paginatedDepts = filteredDepts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const handleOpenForm = (dept) => {
     setErrors({});
     if (dept) {
@@ -240,14 +253,6 @@ export function Departments() {
       className: 'min-w-[250px]'
     },
     {
-      header: 'Staff Count',
-      accessor: (dept) => (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-          {dept.staff_count || 0} Staff
-        </span>
-      )
-    },
-    {
       header: 'Room Count',
       accessor: (dept) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
@@ -335,11 +340,60 @@ export function Departments() {
         </div>
         
         <Table
-          data={filteredDepts}
+          data={paginatedDepts}
           columns={columns}
           keyExtractor={(dept) => dept.id}
           emptyMessage="No departments found matching your search."
         />
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="text-sm text-slate-500 dark:text-slate-400">
+              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min((currentPage - 1) * itemsPerPage + 1, filteredDepts.length)}</span> to{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                {Math.min(currentPage * itemsPerPage, filteredDepts.length)}
+              </span>{' '}
+              of <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredDepts.length}</span> results
+            </div>
+            
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+              >
+                Previous
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, idx) => {
+                const pageNum = idx + 1;
+                const isSelected = pageNum === currentPage;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 flex items-center justify-center text-xs font-semibold rounded-lg border transition-colors ${
+                      isSelected
+                        ? 'border-[#0d6a49] bg-[#E8F5E9] text-[#0d6a49] font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Form Modal */}

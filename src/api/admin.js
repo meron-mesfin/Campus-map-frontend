@@ -97,9 +97,4 @@ export async function getAnalytics(startDate, endDate) {
   return apiFetch(`/admin/reports/analytics${query}`);
 }
 
-// ─── Staff / Employees ───────────────────────────────────────────────────────
 
-/** GET /api/employees/:id */
-export async function getEmployee(id) {
-  return apiFetch(`/employees/${id}`);
-}

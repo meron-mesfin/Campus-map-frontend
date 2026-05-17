@@ -52,11 +52,6 @@ export function Sidebar({ role, isCollapsed }) {
     icon: Building2Icon
   },
   {
-    name: 'Staff',
-    path: '/campus/staff',
-    icon: UsersIcon
-  },
-  {
     name: 'Feedback',
     path: '/campus/feedback',
     icon: MessageSquareIcon
